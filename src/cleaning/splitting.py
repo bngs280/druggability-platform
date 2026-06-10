@@ -1,6 +1,6 @@
 import csv
 
-input_file = "data/raw/proteins.csv"
+input_file = "data/raw/protein_comp.csv"
 output_file = "data/raw/proteins_clean.csv"
 
 rows = []
