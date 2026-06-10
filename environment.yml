@@ -1,0 +1,27 @@
+name: druggability-ai
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - python=3.11
+
+  - pandas
+  - numpy
+  - scikit-learn
+  - biopython
+  - joblib
+
+  - fastapi
+  - uvicorn
+
+  - fpocket
+
+  - pip
+
+  - pip:
+      - xgboost
+      - colabfold
+      - pydantic
+      - requests
