@@ -1,23 +1,29 @@
 import pandas as pd
 import joblib
 
-model = joblib.load(
-    "data/models/druggability.pkl"
-)
+# Load model
+model = joblib.load("models/druggability.pkl")
 
+# IMPORTANT: must match training feature names EXACTLY
 sample = pd.DataFrame([{
 
-    "pocket_count":5,
-    "max_volume":800,
-    "mean_volume":300,
-    "druggability_score":0.75
+    "PocketCount": 5,
+    "MaxScore": 0.8,
+    "MeanScore": 0.5,
+    "MaxDruggability": 0.75,
+    "MeanDruggability": 0.6,
+    "MaxSASA": 800,
+    "MeanSASA": 300
 
 }])
 
+# Predict class
 pred = model.predict(sample)[0]
 
+# Predict probability
 prob = model.predict_proba(sample)[0]
 
-print("Prediction:", pred)
-
-print("Probability:", prob)
+print("Prediction (class):", pred)
+# print("Probability [class0, class1]:", prob)
+print(f"Class 0 (non-druggable): {prob[0]*100:.2f}%")
+print(f"Class 1 (druggable)    : {prob[1]*100:.2f}%")

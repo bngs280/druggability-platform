@@ -1,147 +1,116 @@
-import pandas as pd
-import numpy as np
-
-from xgboost import XGBRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
+import os
 import joblib
+import pandas as pd
 
-
-# =========================
-# 1. LOAD DATA
-# =========================
-# Expected columns:
-# MaxScore, MeanDruggability, MaxSASA, MeanSASA, PocketCount, Compound
-
-df = pd.read_csv("data/features/file1_with_compounds.csv")
-
-print("Dataset shape:", df.shape)
-def assign_class(x):
-    if x <= 10:
-        return 0   # low
-    elif x <= 100:
-        return 1   # medium
-    else:
-        return 2   # high
-
-
-df["target_class"] = df["Compound"].apply(assign_class)
-
-print(df["target_class"].value_counts())
-# =========================
-# 2. BASIC CLEANING
-# =========================
-df = df.dropna()
-
-# Remove invalid compound values
-df = df[df["Compound"] >= 0]
-
-# =========================
-# 3. TARGET TRANSFORMATION
-# =========================
-# Why log?
-# Compound are highly skewed (1 to 5000+)
-df["target"] = np.log1p(df["Compound"])
-
-# =========================
-# 4. FEATURES / LABEL SPLIT
-# =========================
-X = df.drop(columns=["Compound", "target", "UniProt",  "target_class"])
-y = df["target_class"]
-
-print("Features:", list(X.columns))
-
-# =========================
-# 5. TRAIN / TEST SPLIT
-# =========================
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    classification_report,
 )
 
-# =========================
-# 6. MODEL (XGBOOST REGRESSOR)
-# =========================
-model = XGBRegressor(
-    n_estimators=300,
-    max_depth=5,
+from xgboost import XGBClassifier
+
+# 🔥 SMOTE IMPORT
+from imblearn.over_sampling import SMOTE
+
+
+INPUT = "data/features/features_with_label.csv"
+MODEL_DIR = "models"
+
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+
+# -----------------------
+# Load data
+# -----------------------
+
+df = pd.read_csv(INPUT)
+
+X = df.drop(columns=["UniProt", "label"])
+y = df["label"]
+
+
+# -----------------------
+# Train/Test split
+# -----------------------
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    stratify=y,
+    random_state=42,
+)
+
+
+# -----------------------
+# SMOTE (ONLY TRAIN DATA)
+# -----------------------
+
+smote = SMOTE(random_state=42)
+
+X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
+
+print("\nAfter SMOTE:")
+print(y_train_res.value_counts())
+
+
+# -----------------------
+# Model (NO NEED scale_pos_weight now)
+# -----------------------
+
+model = XGBClassifier(
+    n_estimators=500,
+    max_depth=6,
     learning_rate=0.05,
     subsample=0.8,
     colsample_bytree=0.8,
+    objective="binary:logistic",
+    eval_metric="logloss",
     random_state=42,
-    eval_metric="mlogloss"
 )
 
-# =========================
-# 7. TRAINING
-# =========================
-model.fit(X_train, y_train)
 
-# =========================
-# 8. PREDICTION
-# =========================
+# -----------------------
+# Train
+# -----------------------
+
+model.fit(X_train_res, y_train_res)
+
+
+# -----------------------
+# Prediction
+# -----------------------
+
 y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]
 
-# =========================
-# 9. EVALUATION
-# =========================
-rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-r2 = r2_score(y_test, y_pred)
 
-print("\n===== MODEL PERFORMANCE =====")
-print("RMSE:", rmse)
-print("R2 Score:", r2)
+# -----------------------
+# Evaluation
+# -----------------------
 
-# =========================
-# 10. CONVERT BACK TO Compound
-# =========================
-y_test_real = np.expm1(y_test)
-y_pred_real = np.expm1(y_pred)
+print("\nAccuracy :", accuracy_score(y_test, y_pred))
+print("Precision:", precision_score(y_test, y_pred))
+print("Recall   :", recall_score(y_test, y_pred))
+print("F1 Score :", f1_score(y_test, y_pred))
+print("ROC AUC  :", roc_auc_score(y_test, y_prob))
 
-print("\nSample predictions:")
-for i in range(5):
-    print(f"Actual: {y_test_real.iloc[i]:.2f} | Predicted: {y_pred_real[i]:.2f}")
+print("\nClassification Report\n")
+print(classification_report(y_test, y_pred))
 
-# =========================
-# 11. SAVE MODEL
-# =========================
-joblib.dump(model, "data/models/druggability_xgb.pkl")
 
-print("\nModel saved → data/models/druggability_xgb.pkl")
+# -----------------------
+# Save model
+# -----------------------
 
-# import pandas as pd
+joblib.dump(model, os.path.join(MODEL_DIR, "druggability.pkl"))
+joblib.dump(list(X.columns), os.path.join(MODEL_DIR, "feature_columns.pkl"))
 
-# from xgboost import XGBClassifier
+print("\nModel saved.")
+print("Feature list saved.")
 
-# import joblib
-
-# df = pd.read_csv(
-#     "data/features/features.csv"
-# )
-
-# X = df.drop(
-#     columns=["label"]
-# )
-
-# y = df["label"]
-
-# model = XGBClassifier(
-#     n_estimators=200,
-#     max_depth=5,
-#     learning_rate=0.05,
-#     random_state=42
-# )
-
-# model.fit(
-#     X,
-#     y
-# )
-
-# joblib.dump(
-#     model,
-#     "data/models/druggability.pkl"
-# )
-
-# print("Model saved")

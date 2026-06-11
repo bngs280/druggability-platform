@@ -1,4 +1,4 @@
-data/
+data/pdb/
 .env
 *.env
 __pycache__/
