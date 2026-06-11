@@ -1,20 +1,15 @@
-# Druggability AI Platform
+# 🧬 Druggability AI: Structure-Based Drug Target Prediction System
 
-## Overview
+An end-to-end **AI-powered drug target prioritization platform** that predicts protein druggability from UniProt IDs using structural biology and machine learning.
 
-The **Druggability AI Platform** is an end-to-end computational pipeline for predicting the **druggability potential of human proteins** using structural biology and machine learning.
+The system integrates:
+- 🧬 AlphaFold protein structures
+- 🧪 fpocket binding pocket detection
+- 📊 Feature engineering from protein structures
+- 🤖 XGBoost machine learning model
+- 🌐 FastAPI deployment for real-time inference
 
-Instead of relying on manually curated druggable/non-druggable labels, this platform leverages:
-
-* Known human drug targets
-* AlphaFold protein structures
-* Binding pocket analysis using Fpocket
-* Pocket feature engineering
-* Machine learning models
-* REST API deployment
-
-The final output is a **Druggability Score (0–1)** indicating the likelihood that a protein possesses druggable characteristics.
-
+It converts raw protein identifiers into a **quantitative druggability score** to prioritize potential therapeutic targets.
 ---
 # Data from chembl download
 filter Human only, with compunds and activity keep them with csv Uniprot (unprot_id),Target(name of target)
@@ -259,7 +254,7 @@ models/model.pkl
 # Step 7: Prediction
 
 ```
-python src/inference/predict.py
+python -m src.inference.test
 ```
 
 Input:
@@ -287,14 +282,15 @@ Output:
 # Step 8: REST API
 
 ```
-POST /predict
+uvicorn src.api.main:app     --host 0.0.0.0     --port 8000
+Open in Browser: http://0.0.0.0:8000/docs
 ```
 
 Example:
 
 ```json
 {
-    "uniprot":"P00533"
+    "uniprot":"A6NCS4"
 }
 ```
 
@@ -302,8 +298,15 @@ Response:
 
 ```json
 {
-    "score":0.94
+  "uniprot": "A6NCS4",
+  "score": 0.9937459230422974,
+  "prediction_class": 1,
+  "probability": {
+    "class0": 0.006254076957702637,
+    "class1": 0.9937459230422974
+  }
 }
+  
 ```
 
 ---
